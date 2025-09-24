@@ -8,6 +8,7 @@ interface AuthorFormData {
   birthDate: string;
   image: string;
   description: string;
+  book?: string;
 }
 
 const AuthorForm: React.FC = () => {
@@ -15,13 +16,14 @@ const AuthorForm: React.FC = () => {
   const [birthDate, setBirthDate] = useState("");
   const [image, setImage] = useState("");
   const [description, setDescription] = useState("");
+  const [book, setBook] = useState("");
 
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const newAuthor: AuthorFormData = { name, birthDate, image, description };
+    const newAuthor: AuthorFormData = { name, birthDate, image, description, book };
 
     // POST al backend
     await fetch("/api/authors", {
@@ -82,6 +84,16 @@ const AuthorForm: React.FC = () => {
           rows={4}
         />
       </div>
+
+      <div>
+        <label className="block text-sm font-medium">Libro</label>
+        <input
+          value={book}
+          onChange={(e) => setBook(e.target.value)}
+          className="w-full border p-2 rounded"
+        />
+      </div>
+
 
       <button className="px-4 py-2 rounded bg-black text-white">Crear</button>
     </form>

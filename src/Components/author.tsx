@@ -14,6 +14,7 @@ export interface AuthorProps {
     name: string;
     description: string;
     image: string;
+    book?: string;
 }
 //*Type adicional que funciona como intercepción entre ambos props, para agregar la función de eliminar. Esto quedó así porque primero había hecho solo la visualización y hasta el final agregué el delete */
 type CardProps = AuthorProps & {
@@ -21,7 +22,7 @@ type CardProps = AuthorProps & {
 };
 
 //* Uso la intercepción para crear la card, y dentro de la card agrego los botones de editar y eliminar.
-const Card = ({ id, birthDate, name, description, image, onDelete }: CardProps) => {
+const Card = ({ id, birthDate, name, description, image, book,onDelete }: CardProps) => {
   return (
     <div className="border rounded-lg shadow-lg overflow-hidden max-w-sm">
       {/* 3. We use props to render dynamic content. */}
@@ -37,6 +38,7 @@ const Card = ({ id, birthDate, name, description, image, onDelete }: CardProps) 
         <h3 className="text-xl font-bold mb-2">{name}</h3>
         <p className="text-gray-700">{description}</p>
         <p className="text-sm text-gray-500 mt-2">Nacido: {birthDate}</p>
+        <p className="text-sm text-gray-500 mt-2">Libro: {book}</p>
 
         <div className="pt-3">
           {/* Este es un link porque lo manejo como una ruta */}

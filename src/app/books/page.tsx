@@ -3,26 +3,24 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
-type Author = {
+type book = {
   id: number;
-  name: string;
-  birthDate: string;
+  Title: string;
+  Release: string;
   image: string;
   description: string;
-  book?: string;
 };
 
-export default function EditAuthorPage() {
+export default function EditBookPage() {
   const { id } = useParams<{ id: string }>();
-  const authorId = Number(id);
+  const bookId = Number(id);
   const router = useRouter();
 
-  // estado del form 
-  const [name, setName] = useState("");
-  const [birthDate, setBirthDate] = useState("");
+  // estado del form
+  const [Title, setTitle] = useState("");
+  const [Release, setRelease] = useState("");
   const [image, setImage] = useState("");
   const [description, setDescription] = useState("");
-  const [book, setBook] = useState("");
 
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -32,11 +30,11 @@ export default function EditAuthorPage() {
     (async () => {
       try {
         setLoading(true);
-        const res = await fetch(`/api/authors/${authorId}`, { cache: "no-store" });
-        if (!res.ok) throw new Error(`No se pudo cargar el autor #${authorId}`);
-        const a = (await res.json()) as Author;
-        setName(a.name);
-        setBirthDate(a.birthDate);
+        const res = await fetch(`/api/books/${bookId}`, { cache: "no-store" });
+        if (!res.ok) throw new Error(`No se pudo cargar el libro #${bookId}`);
+        const a = (await res.json()) as book;
+        setTitle(a.Title);
+        setRelease(a.Release);
         setImage(a.image ?? "");
         setDescription(a.description ?? "");
         setError(null);
@@ -46,14 +44,14 @@ export default function EditAuthorPage() {
         setLoading(false);
       }
     })();
-  }, [authorId]);
+  }, [bookId]);
 
   // 2) Guardar cambios (PUT)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const payload = { name: name.trim(), birthDate, image: image.trim(), description: description.trim() };
-      const res = await fetch(`/api/authors/${authorId}`, {
+      const payload = { Title: Title.trim(), Release, image: image.trim(), description: description.trim() };
+      const res = await fetch(`/api/books/${bookId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -76,25 +74,25 @@ export default function EditAuthorPage() {
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-6 space-y-6">
-      <h1 className="text-2xl font-bold text-center">Editar autor #{authorId}</h1>
+      <h1 className="text-2xl font-bold text-center">Editar libro #{bookId}</h1>
 
       <form onSubmit={handleSubmit} className="max-w-md w-full space-y-4">
         <div>
-          <label className="block text-sm font-medium">Nombre</label>
+          <label className="block text-sm font-medium">Título</label>
           <input
             className="w-full border p-2 rounded"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            value={Title}
+            onChange={(e) => setTitle(e.target.value)}
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium">Nacimiento</label>
+          <label className="block text-sm font-medium">Fecha de lanzamiento</label>
           <input
             type="date"
             className="w-full border p-2 rounded"
-            value={birthDate}
-            onChange={(e) => setBirthDate(e.target.value)}
+            value={Release}
+            onChange={(e) => setRelease(e.target.value)}
           />
         </div>
 
