@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Card, { AuthorProps } from "./author";
 import { getLocalAuthors, deleteLocalAuthor } from "../lib/localAuthors";
+import { API_BASE } from "../lib/apiBase";
 
 interface AuthorListProps {
   authors?: AuthorProps[]; 
@@ -21,9 +22,18 @@ const AuthorList: React.FC<AuthorListProps> = ({ authors: initialAuthors }) => {
         setLoading(true);
         let remote: AuthorProps[] = [];
         try {
-          const res = await fetch("/api/authors", { cache: "no-store" });
-          if (res.ok) {
-            remote = await res.json();
+          if (API_BASE) {
+            
+            const res = await fetch(`${API_BASE}/authors`, { cache: "no-store" });
+            if (res.ok) {
+              remote = await res.json();
+            }
+          } else {
+            
+            const res = await fetch("/api/authors", { cache: "no-store" });
+            if (res.ok) {
+              remote = await res.json();
+            }
           }
         } catch { /* ignore network */ }
         const locals = getLocalAuthors().map(a => ({
