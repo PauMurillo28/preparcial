@@ -1,131 +1,101 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import Image from "next/image";
+import Link from "next/link";
+import { mapRawBook, Book } from "../../types/book";
+import { API_BASE } from "../../lib/apiBase";
 
-type book = {
-  id: number;
-  Title: string;
-  Release: string;
-  image: string;
-  description: string;
-};
-
-export default function EditBookPage() {
-  const { id } = useParams<{ id: string }>();
-  const bookId = Number(id);
-  const router = useRouter();
-
-  // estado del form
-  const [Title, setTitle] = useState("");
-  const [Release, setRelease] = useState("");
-  const [image, setImage] = useState("");
-  const [description, setDescription] = useState("");
-
-  const [loading, setLoading] = useState<boolean>(true);
+export default function BooksListPage() {
+  const [books, setBooks] = useState<Book[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 1) Cargar datos del autor
   useEffect(() => {
     (async () => {
+      setLoading(true);
       try {
-        setLoading(true);
-        const res = await fetch(`/api/books/${bookId}`, { cache: "no-store" });
-        if (!res.ok) throw new Error(`No se pudo cargar el libro #${bookId}`);
-        const a = (await res.json()) as book;
-        setTitle(a.Title);
-        setRelease(a.Release);
-        setImage(a.image ?? "");
-        setDescription(a.description ?? "");
-        setError(null);
+        let mapped: Book[] = [];
+        let ok = false;
+        // 1) Intentar endpoint dedicado de backend si API_BASE está configurado
+        if (API_BASE) {
+          try {
+            const res = await fetch(`${API_BASE}/books`, { cache: "no-store" });
+            if (res.ok) {
+              const data = await res.json();
+              if (Array.isArray(data)) {
+                mapped = data.map(mapRawBook);
+                ok = true;
+              }
+            }
+          } catch {
+            // ignoramos y pasamos al fallback
+          }
+        }
+        // 2) Fallback: construir libros a partir de /api/authors (ruta interna que ya funciona)
+        if (!ok) {
+          const aRes = await fetch(`/api/authors`, { cache: "no-store" });
+            if (!aRes.ok) throw new Error("No se pudo obtener autores para derivar libros");
+            const authorsData = await aRes.json();
+            if (Array.isArray(authorsData)) {
+              const mapUnique = new Map<number, Book>();
+              for (const author of authorsData) {
+                if (Array.isArray(author.books)) {
+                  for (const rawBook of author.books) {
+                    const b = mapRawBook(rawBook);
+                    if (!mapUnique.has(b.id)) mapUnique.set(b.id, b);
+                  }
+                }
+              }
+              mapped = Array.from(mapUnique.values());
+              ok = true;
+            }
+        }
+        setBooks(mapped);
+        if (!ok) throw new Error("No se pudieron cargar libros de ningún origen");
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : String(e));
       } finally {
         setLoading(false);
       }
     })();
-  }, [bookId]);
+  }, []);
 
-  // 2) Guardar cambios (PUT)
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const payload = { Title: Title.trim(), Release, image: image.trim(), description: description.trim() };
-      const res = await fetch(`/api/books/${bookId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const t = await res.text();
-        throw new Error(`Error al actualizar: ${t}`);
-      }
-
-      // Notificar y volver a la lista
-      window.dispatchEvent(new Event("authors:updated"));
-      router.push("/authors");
-    } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : "Error inesperado");
-    }
-  };
-
-  if (loading) return <main className="p-6">Cargando...</main>;
-  if (error)   return <main className="p-6 text-red-600">{error}</main>;
+  if (loading) return <main className="p-6">Cargando libros...</main>;
+  if (error) return <main className="p-6 text-red-600">{error}</main>;
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-6 space-y-6">
-      <h1 className="text-2xl font-bold text-center">Editar libro #{bookId}</h1>
-
-      <form onSubmit={handleSubmit} className="max-w-md w-full space-y-4">
-        <div>
-          <label className="block text-sm font-medium">Título</label>
-          <input
-            className="w-full border p-2 rounded"
-            value={Title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium">Fecha de lanzamiento</label>
-          <input
-            type="date"
-            className="w-full border p-2 rounded"
-            value={Release}
-            onChange={(e) => setRelease(e.target.value)}
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium">URL de la imagen</label>
-          <input
-            className="w-full border p-2 rounded"
-            value={image}
-            onChange={(e) => setImage(e.target.value)}
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium">Descripción</label>
-          <textarea
-            className="w-full border p-2 rounded"
-            rows={4}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </div>
-
-        <div className="flex gap-2">
-          <button className="px-4 py-2 rounded bg-black text-white">Guardar</button>
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="px-4 py-2 rounded border"
+    <main className="p-6 space-y-6">
+      <h1 className="text-3xl font-bold">Libros</h1>
+      {books.length === 0 && <p className="text-gray-500">No hay libros registrados.</p>}
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {books.map(b => (
+          <Link
+            key={b.id}
+            href={`/books/${b.id}`}
+            className="group border rounded-md bg-neutral-900/50 hover:bg-neutral-800 transition shadow-sm hover:shadow focus:outline-none focus:ring-2 focus:ring-blue-500 flex flex-col overflow-hidden"
           >
-            Cancelar
-          </button>
-        </div>
-      </form>
+            <div className="w-full h-64 bg-black flex items-center justify-center overflow-hidden">
+              {b.image ? (
+                <Image
+                  src={b.image}
+                  alt={b.name}
+                  width={230}
+                  height={320}
+                  className="max-h-full w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+                />
+              ) : (
+                <span className="text-xs text-gray-500">Sin imagen</span>
+              )}
+            </div>
+            <div className="p-4 flex flex-col gap-2 flex-1">
+              <h3 className="font-semibold text-base leading-snug line-clamp-2">{b.name}</h3>
+              <p className="text-sm text-gray-400 line-clamp-3 flex-1">{b.description}</p>
+              <p className="text-[11px] text-gray-500">Publicación: {b.publishingDate || '—'}</p>
+            </div>
+          </Link>
+        ))}
+      </div>
     </main>
   );
 }

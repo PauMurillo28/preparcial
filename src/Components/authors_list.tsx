@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Card, { AuthorProps } from "./author";
+import { getLocalAuthors, deleteLocalAuthor } from "../lib/localAuthors";
 
 interface AuthorListProps {
   authors?: AuthorProps[]; 
@@ -18,10 +19,23 @@ const AuthorList: React.FC<AuthorListProps> = ({ authors: initialAuthors }) => {
     const load = async () => {
       try {
         setLoading(true);
-        const res = await fetch("/api/authors", { cache: "no-store" });
-        if (!res.ok) throw new Error("Error al cargar autores");
-        const data: AuthorProps[] = await res.json();
-        if (isMounted) setAuthors(data);
+        let remote: AuthorProps[] = [];
+        try {
+          const res = await fetch("/api/authors", { cache: "no-store" });
+          if (res.ok) {
+            remote = await res.json();
+          }
+        } catch { /* ignore network */ }
+        const locals = getLocalAuthors().map(a => ({
+          id: a.id,
+          name: a.name,
+          birthDate: a.birthDate,
+          description: a.description,
+          image: a.image,
+          book: a.books[0]?.name ?? "",
+        }));
+        const merged = [ ...locals, ...remote.filter(r => !locals.some(l => l.id === r.id)) ];
+        if (isMounted) setAuthors(merged);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         if (isMounted) setError(msg);
@@ -46,15 +60,20 @@ const AuthorList: React.FC<AuthorListProps> = ({ authors: initialAuthors }) => {
   const deleteAuthor = async (id: number) => {
     const ok = confirm("¿Eliminar este autor?");
     if (!ok) return;
+    if (id < 0) {
+      // Local only
+      deleteLocalAuthor(id);
+      setAuthors(prev => prev.filter(a => a.id !== id));
+      window.dispatchEvent(new Event("authors:updated"));
+      return;
+    }
     try {
       const res = await fetch(`/api/authors/${id}`, { method: "DELETE" });
       if (!res.ok) {
         const t = await res.text();
         throw new Error(`No se pudo eliminar: ${t}`);
       }
-      // Actualiza la lista local al instante
       setAuthors((prev) => prev.filter((a) => a.id !== id));
-      // Y notifica por si otras vistas escuchan el evento
       window.dispatchEvent(new Event("authors:updated"));
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
